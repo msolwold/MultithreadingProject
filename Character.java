@@ -1,4 +1,5 @@
 import java.util.concurrent.*;
+import java.util.*;
 
 /**
  * Create thread character will occupy
@@ -38,11 +39,12 @@ public class Character extends Thread {
 
   private boolean dead = false;
   private boolean winner = false;
+  private boolean leader = false;
 
   private boolean holding = false;
   private Carrot carrot;
 
-  private int[] location = new int[2];
+  private int[] location;
 
   public Character(String name, String n, Game g, ConcurrentLinkedQueue<Character> q){
     this.name = name;
@@ -50,6 +52,8 @@ public class Character extends Thread {
     this.id = "  "+n+"  ";
     this.game = g;
     this.q = q;
+
+    this.location = new int[2];
   }
 
   public String getNameChar(){
@@ -62,6 +66,10 @@ public class Character extends Thread {
 
   public String toString(){
     return this.id;
+  }
+
+  public void toStringL(){
+    System.out.println(this.name + " is at position "+ Arrays.toString(this.location));
   }
 
   public void setWinner(){
@@ -80,8 +88,14 @@ public class Character extends Thread {
     this.id = " "+this.initial+"(c)";
   }
 
-  public void kill(){
+  public void setLeader(){
+    this.leader = true;
+  }
+
+  public Carrot kill(){
     this.dead = true;
+    this.holding = false;
+    return this.carrot;
   }
 
   public boolean isDead(){
@@ -90,6 +104,10 @@ public class Character extends Thread {
 
   public boolean isWinner(){
     return this.winner;
+  }
+
+  public boolean isLeader(){
+    return this.leader;
   }
 
   public boolean hasCarrot(){

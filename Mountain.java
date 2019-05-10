@@ -12,7 +12,7 @@ import java.util.*;
  */
 
 
-public class Mountain {
+public class Mountain  {
 
   private boolean climbed = false;
   private Character winner;

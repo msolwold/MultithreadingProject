@@ -12,9 +12,12 @@ import java.util.concurrent.locks.*;
 
 public class Game {
 
+  private boolean debug = false;
+
   private ConcurrentLinkedQueue<Character> q;
   private ReentrantLock lock = new ReentrantLock();
   private boolean leaderChange = false;
+  private boolean mountainMoved = false;
 
   private boolean winner = false;
   private Character winningPlayer;
@@ -24,30 +27,44 @@ public class Game {
   private Board board;
 
 
-  public Game(ConcurrentLinkedQueue<Character> q){
+  public Game(ConcurrentLinkedQueue<Character> q, boolean debug){
     this.q = q;
+    this.debug = debug;
   }
 
   public void setBoard(Board board){
     this.board = board;
   }
 
-  public void play(Character c){
+  public synchronized void play(Character c){
+
+    if (debug) System.out.println("------- Starting Game -------");
 
     this.q.peek().setLeader();
 
     while (!winner){
 
+      if (debug) System.out.println("It is round number: " + this.round);
+
+      if (debug) System.out.println("Print out board: \n\n");
       System.out.println(this.board.printBoard());
 
       Character currChar = this.q.poll();
 
-      if (currChar.isLeader && !this.leaderChange) this.rounds++;
+      if (currChar.isLeader() && !this.leaderChange){
+        if (this.mountainMoved) this.mountainMoved = false;
+        this.round++;
+      }
+      
       this.leaderChange = false;
 
-      if (this.rounds / 3 == 0) this.board.moveCarrots();
+      if (this.round % 3 == 0 && !this.mountainMoved){
+        this.board.moveMountain();
+        this.mountainMoved = true;
+      }
 
-      System.out.println("It is " + currChar.getNameChar() + "'s turn to move'");
+      System.out.println("It is " + currChar.getNameChar() + "'s turn to move");
+      if (debug) currChar.toStringL();
 
       try
       {
@@ -56,16 +73,17 @@ public class Game {
         this.winner = this.board.moveCharacter(currChar);
 
         if (this.winner){
+          if (debug) System.out.println("We have a winner (Game Class Line ~65)"+currChar.toString());
            this.winningPlayer = currChar;
            while (!this.q.isEmpty()){
-             this.q.poll.interrupt();
+             this.q.poll().interrupt();
            }
         }
 
         if (!currChar.isDead() && !this.winner) this.q.add(currChar);
         else{
-          if (currChar.isLeader) {
-            this.q.peek().setLeader;
+          if (currChar.isLeader()) {
+            this.q.peek().setLeader();
             this.leaderChange = true;
           }
         }
