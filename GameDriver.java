@@ -23,10 +23,10 @@ public class GameDriver{
     //////////////////////////////
 
     if (debug) System.out.println("Creating Threads...");
-    Character marvin = new Character("marvin", "m", g1, q);
-    Character bugs = new Character("bugs", "b", g1, q);
-    Character taz = new Character("taz", "d", g1, q);
-    Character tweety = new Character("tweety", "t", g1, q);
+    Character marvin = new Character("marvin", "m", g1, q, debug);
+    Character bugs = new Character("bugs", "b", g1, q, debug);
+    Character taz = new Character("taz", "d", g1, q, debug);
+    Character tweety = new Character("tweety", "t", g1, q, debug);
 
     ////////////////////////////////////////////////
     // Create Carrot, Mountain, and Board Objects //
@@ -51,6 +51,7 @@ public class GameDriver{
     ///////////////////
 
     if (debug) System.out.println("Starting Threads...");
+    if (debug) System.out.println("------- Starting Game -------");
     marvin.start();
     bugs.start();
     taz.start();
