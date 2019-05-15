@@ -11,40 +11,39 @@ import java.util.*;
  * @param location location of mountain object
  */
 
-
-public class Mountain  {
+public class Mountain {
 
   private boolean climbed = false;
   private Character winner;
   private int[] location = new int[2];
 
-  public Mountain(){
+  public Mountain() {
 
   }
 
-  public String toString(){
+  public String toString() {
     return "  M  ";
   }
 
-  public Character getWinner(){
+  public Character getWinner() {
     return this.winner;
   }
 
-  public int[] getLocation(){
+  public int[] getLocation() {
     return this.location;
   }
 
-  public void setWinner(Character c){
+  public void setWinner(Character c) {
     this.winner = c;
     this.climbed = true;
   }
 
-  public void setLocation(int x, int y){
+  public void setLocation(int x, int y) {
     this.location[0] = x;
     this.location[1] = y;
   }
 
-  public boolean isClimbed(){
+  public boolean isClimbed() {
     return this.climbed;
   }
 
