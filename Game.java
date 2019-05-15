@@ -1,106 +1,146 @@
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.*;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
- * Class that will track the game movements
- * Creates all necessary objects for the game
- * Will hold 2d array and make movements
+ * Tracks rounds and contains the locks that create synchronization
+ * Contains the checker for winner
+ * Allows 1 thread to access moveCharacter at a time
  *
  */
 
 public class Game {
 
+  /////////////////////
+  // Local Variables //
+  /////////////////////
+
   private boolean debug = false;
-  private int gameID = (int)(Math.random()*100);
+  private int gameID = (int) (Math.random() * 100);
 
-  private ConcurrentLinkedQueue<Character> q;
-  private ReentrantLock lock = new ReentrantLock();
-  private boolean leaderChange = false;
-  private boolean mountainMoved = false;
+  // Lock used for enforcing synchronization
+  ReentrantLock reeLock = new ReentrantLock();
 
+  // boolean for tracking winner
   private boolean winner = false;
-  private Character winningPlayer;
 
-  private int round = 0;
+  // Tracks rounds for mountain movement
+  // Will force mountain to move every 3 rounds of gameplay
+  private int mountainTrigger = 15;
+  private int roundCounter = 1;
 
+  // board and character containers
   private Board board;
+  private Character[] characters;
 
+  // used to maintain smooth gameplay
+  private int time = 3000;
 
-  public Game(ConcurrentLinkedQueue<Character> q, boolean debug){
-
-    this.q = q;
+  /**
+   * Game constructor
+   * @param debug boolean debug variable, true indicated enhanced outputs
+   */
+  public Game(boolean debug) {
     this.debug = debug;
   }
 
-  public void setBoard(Board board){
+  /**
+   * Sets board and characters the game will use
+   * @param board Board board object
+   * @param c     Character[] array of character objects
+   */
+  public void setBoard(Board board, Character[] c) {
     this.board = board;
+    this.characters = c;
   }
 
-  public synchronized void play(Character c){
+  /**
+   * Called if a character is killed.
+   * Decrements time to maintain smooth gameplay
+   * lowers bound for rounds to maintain mountain movements
+   */
+  public void characterKilled() {
+    this.time -= 1000;
+    this.mountainTrigger -= 4;
 
-    this.q.peek().setLeader();
+  }
 
-    while (!winner){
+  /**
+   * Called if a winner is found. Forces game to end by killing threads
+   */
+  private void winnerFound() {
+    this.board.printBoard();
+    for (int i = 0; i < this.characters.length; i++) {
+      if (!characters[i].isDead())
+        characters[i].endGame();
+    }
+  }
 
-      if (debug) System.out.println("It is round number: " + this.round);
+  /**
+   * Play method that runs the game.
+   * Uses a Reentrant lock to ensure only one thread enters at a time
+   * @param c Character character object that is requesting to play
+   */
+  public void play(Character c) {
 
-      if (debug) System.out.println("Print out board: \n\nGame ID: " + this.gameID);
-      System.out.println(this.board.printBoard());
+    //Attempts to lock the thread
+    boolean tryReeLock = this.reeLock.tryLock();
 
-      Character currChar = this.q.poll();
+    // If it succeeds it will be allowed in to get properly locked and ran
+    if (tryReeLock && !c.isDead()) {
 
-      if (currChar.isLeader() && !this.leaderChange){
-        if (this.mountainMoved) this.mountainMoved = false;
-        this.round++;
+      try {
+
+        // Lock the thread
+        this.reeLock.lock();
+
+        // Checks round number. Every 3 it will move the mountain
+        if (this.roundCounter >= this.mountainTrigger) {
+          this.board.moveMountain();
+          this.roundCounter = 1;
+        }
+
+        try {
+
+          // Character is moved after some outputs
+          this.roundCounter++;
+          System.out.println(c.toString() + " is up!");
+          System.out.println(this.board.printBoard());
+          System.out.println("Game: " + this.gameID);
+          Thread.sleep(500);
+
+          this.winner = this.board.moveCharacter(c);
+
+          // Checks if character who recently played is the winner
+          if (this.winner)
+            winnerFound();
+        }
+
+        // Catches exception
+        catch (InterruptedException e) {
+          if (this.debug)
+            System.out.println("Thread interruption: " + e);
+
+          // Unlocks the thread allowing another thread to enter
+        } finally {
+          this.reeLock.unlock();
+        }
       }
 
-      if (!currChar.isDead()){
+      finally {
 
-          this.leaderChange = false;
+        this.reeLock.unlock();
 
-          if (this.round % 3 == 0 && !this.mountainMoved){
-            this.board.moveMountain();
-            this.mountainMoved = true;
-          }
+        try {
 
-          System.out.println("It is " + currChar.getNameChar() + "'s turn to move");
-          if (debug) currChar.toStringL();
-          try
-          {
-            Thread.sleep(1000);
-
-            this.winner = this.board.moveCharacter(currChar);
-            System.out.println("hey");
-
-            if (this.winner){
-              System.out.println("We have a winner (Game Class Line ~76)"+currChar.toString());
-               this.winningPlayer = currChar;
-               while (!this.q.isEmpty()){
-
-                 System.out.println("Clearing Queue...");
-
-                 Character deadChar = this.q.poll();
-                 System.out.println("Removing " + deadChar.getNameChar());
-                 deadChar.interrupt();
-
-                 //this.q.poll().interrupt();
-               }
-               //System.exit(0);
-            }
-
-            if (!currChar.isDead() && !this.winner) this.q.add(currChar);
-            else{
-              if (currChar.isLeader()) {
-                this.q.peek().setLeader();
-                this.leaderChange = true;
-              }
-            }
-          }
-        catch (Exception e)
-        {
-
+          // Puts the thread to sleep allowing for other threads to enter without competition
+          // This is what creates the appearance of "turns"
+          // this.time is dependent on # of active threads
+          Thread.sleep(this.time);
+        } catch (InterruptedException e) {
+          if (this.debug)
+            System.out.println("Thread Interruption: " + e);
         }
       }
     }
