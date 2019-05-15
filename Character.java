@@ -30,6 +30,8 @@ import java.util.*;
 
 public class Character extends Thread {
 
+  private boolean debug;
+
   private Game game;
   private ConcurrentLinkedQueue<Character> q;
 
@@ -46,7 +48,10 @@ public class Character extends Thread {
 
   private int[] location;
 
-  public Character(String name, String n, Game g, ConcurrentLinkedQueue<Character> q){
+  public Character(String name, String n, Game g, ConcurrentLinkedQueue<Character> q, boolean debug){
+
+    this.debug = debug;
+
     this.name = name;
     this.initial = n;
     this.id = "  "+n+"  ";
@@ -93,9 +98,15 @@ public class Character extends Thread {
   }
 
   public Carrot kill(){
+
+    if (this.debug) System.out.println(this.name + " is being killed!");
+
     this.dead = true;
-    this.holding = false;
-    return this.carrot;
+    if (this.hasCarrot()){
+      this.holding = false;
+      return this.carrot;
+    }
+    else return null;
   }
 
   public boolean isDead(){
@@ -115,8 +126,18 @@ public class Character extends Thread {
   }
 
   public void run(){
+
     q.add(this);
-    game.play(this);
+
+    synchronized(this){
+
+      try {
+        game.play(this);
+      }
+      catch (Exception e) {
+
+      }
+    }
   }
 
 }
