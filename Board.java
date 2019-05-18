@@ -17,6 +17,7 @@ public class Board {
   /////////////////////
 
   private boolean debug = false;
+  private VisualGameBoard gBoard1 = new VisualGameBoard();
 
   // Board pieces
   private Character[] characters;
@@ -310,8 +311,9 @@ public class Board {
     }
 
     this.board.get(newCoords[1]).set(newCoords[0], this.c);
-
     this.board.get(location[1]).set(location[0], " ");
+
+    this.gBoard1.updateTiles(newCoords, location);
 
     this.c.setLocation(newCoords[0], newCoords[1]);
 
@@ -400,7 +402,7 @@ public class Board {
             printBoard += Carrot.class.cast(this.board.get(i).get(j)).toString() + "|";
           }
         } else
-          printBoard += "     |";
+          printBoard += "  -  |";
       }
 
       if (i < this.board.get(i).size() - 1) {
@@ -469,7 +471,7 @@ public class Board {
 
     // Place Carrots
     for (int j = 0; j < 2; i++, j++) {
-      System.out.println(deck[i]);
+      if (this.debug) System.out.println(deck[i]);
       int row = deck[i] / 5;
       int column = (deck[i] % 5);
       locations.get(row).set(column, this.carrotArr[j]);
@@ -493,6 +495,7 @@ public class Board {
       System.out.println(this.mountain.toString() + " is at postition " + Arrays.toString(this.mountain.getLocation()));
 
     this.board = locations;
+    this.gBoard1.createFrame(this.board);
   }
 
   /**
