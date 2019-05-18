@@ -312,6 +312,7 @@ public class Board {
     this.board.get(newCoords[1]).set(newCoords[0], this.c);
 
     this.board.get(location[1]).set(location[0], " ");
+
     this.c.setLocation(newCoords[0], newCoords[1]);
 
     if (this.debug) {

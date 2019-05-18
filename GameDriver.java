@@ -18,6 +18,7 @@ public class GameDriver {
 
     Game g1 = new Game(debug);
 
+
     //////////////////////////////
     // Create character Threads //
     //////////////////////////////
