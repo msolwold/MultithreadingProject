@@ -44,16 +44,23 @@ public class Character extends Thread {
   private String name;
   private String initial;
   private String id;
+  private int secondRoundID;
+  private int numID;
+  private int round = 1;
 
   // Variables used to track state
+  private boolean frozen = false;
   private boolean dead = false;
   private boolean winner = false;
   private AtomicBoolean alive = new AtomicBoolean(false);
   private boolean holding = false;
   private Carrot carrot;
+  private Character killed;
 
   // Coordinates of the character
   private int[] location;
+
+  private int secondRoundIndex;
 
   /**
    * Creates character object with thread attributes
@@ -62,10 +69,11 @@ public class Character extends Thread {
    * @param g     Game game object
    * @param debug boolean debug option true produced enhanced outputs
    */
-  public Character(String name, String n, Game g, boolean debug) {
+  public Character(int id, String name, String n, Game g, boolean debug) {
 
     this.debug = debug;
 
+    this.numID = id;
     this.name = name;
     this.initial = n;
     this.id = "  " + n + "  ";
@@ -76,12 +84,25 @@ public class Character extends Thread {
     this.location = new int[2];
   }
 
+  public Character(int id, String name, String n, Game g){
+    this.numID = id;
+    this.name = name;
+    this.alive.set(true);
+    this.initial = n;
+    this.game = g;
+    this.round = 2;
+  }
+
   /**
    * Returns the name of the character
    * @return String name of character
    */
   public String getNameChar() {
     return this.name;
+  }
+
+  public int getID(){
+    return this.numID;
   }
 
   /**
@@ -98,6 +119,22 @@ public class Character extends Thread {
    */
   public Carrot getCarrot(){
     return this.carrot;
+  }
+
+  public int getSecondRoundID(){
+    return this.secondRoundID;
+  }
+
+  public int getSecondRoundIndex(){
+    return this.secondRoundIndex;
+  }
+
+  public boolean frozen(){
+    return this.frozen;
+  }
+
+  public void move(){
+    this.secondRoundIndex++;
   }
 
   /**
@@ -147,6 +184,18 @@ public class Character extends Thread {
     c.setHolder(this);
   }
 
+  public void setFrozen(){
+    this.frozen = !this.frozen;
+    if (this.frozen) System.out.println("Sam froze " + this.name + "!");
+    else System.out.println(this.name + " broke out of the ice and will move next round!");
+  }
+
+  public void setSecondRoundInfo(int id, int index){
+    this.secondRoundID = id;
+    this.secondRoundIndex = index;
+    this.round = 2;
+  }
+
   /**
    * Used when marvin kills the character
    * @return Carrot returns the carrot object the character was holding if there is one
@@ -161,7 +210,6 @@ public class Character extends Thread {
     this.game.characterKilled();
 
     if (this.hasCarrot()) {
-      this.holding = false;
       return this.carrot;
     }
 
@@ -194,12 +242,28 @@ public class Character extends Thread {
     return this.winner;
   }
 
+  public void killed(Character c){
+    this.killed = c;
+  }
+
+  public Character getKilled(){
+    return this.killed;
+  }
+
   /**
    * method that returns state of character
    * @return boolean true if character is holding carrot
    */
   public boolean hasCarrot() {
     return this.holding;
+  }
+
+  /////////////////
+  // Sam Methods //
+  /////////////////
+
+  public boolean lockOn(){
+    return Math.random() >= .5;
   }
 
   /**
@@ -212,15 +276,38 @@ public class Character extends Thread {
 
     while (alive.get()) {
 
-      try {
+      if (this.round == 1){
 
-        game.play(this);
-        Thread.sleep(1000);
+        try {
 
-      } catch (Exception e) {
+          game.playFirstRound(this);
+          Thread.sleep(1500);
 
-        if (this.debug)
-          System.out.println("Thread Interrupted...");
+          if (this.winner && this.round != 2) Thread.sleep(1000000);
+
+        } catch (Exception e) {
+
+          if (this.debug)
+            System.out.println("Thread Interrupted..." + e);
+
+        }
+      }
+
+      else {
+
+        try {
+
+          game.playSecondRound(this);
+          Thread.sleep(750);
+
+          if (this.winner && this.round != 2) Thread.sleep(1000000);
+
+        } catch (Exception e) {
+
+          if (this.debug)
+            System.out.println("Thread Interrupted..." + e);
+
+        }
 
       }
     }

@@ -17,18 +17,22 @@ public class Board {
   /////////////////////
 
   private boolean debug = false;
-  private VisualGameBoard gBoard1 = new VisualGameBoard();
+  private VisualGameBoard gBoard1;
+  private Game game;
 
   // Board pieces
   private Character[] characters;
   private Carrot[] carrotArr;
   private Mountain mountain;
+  private int availableCarrots = 2;
 
   // Current character being moved
   private Character c;
 
   // Container for board pieces
   private ArrayList<ArrayList> board;
+  private Character[][] secondRoundPlayers = new Character[2][];
+
 
   /**
    * Creates the board object
@@ -37,15 +41,19 @@ public class Board {
    * @param mtn        Mountain mountain object
    * @param debug      boolean debug option set in GameDriver
    */
-  public Board(Character[] characters, Carrot[] carrotArr, Mountain mtn, boolean debug) {
+  public Board(Game g, Character[] characters, Carrot[] carrotArr, Mountain mtn, boolean debug) {
     this.characters = characters;
     this.carrotArr = carrotArr;
     this.mountain = mtn;
+    this.game = g;
 
     this.debug = debug;
 
-    createBoard();
+    this.gBoard1 = new VisualGameBoard();
+    this.game.givegBoard(this.gBoard1);
+    createFirstRoundBoard();
   }
+
 
   ////////////////////////
   // Movement Functions //
@@ -169,6 +177,19 @@ public class Board {
     return false;
   }
 
+  public boolean moveCharacterRoundTwo(Character c) {
+    System.out.println(c.getSecondRoundID());
+    System.out.println(c.getID());
+    System.out.print(c.getNameChar() + " is moving from " + c.getSecondRoundIndex());
+    this.secondRoundPlayers[c.getSecondRoundID()][c.getSecondRoundIndex()] = null;
+    c.move();
+    this.secondRoundPlayers[c.getSecondRoundID()][c.getSecondRoundIndex()] = c;
+    System.out.println(" to " + c.getSecondRoundIndex());
+
+    this.gBoard1.moveRoundTwo(c.getSecondRoundID(), c.getSecondRoundIndex());
+    return c.getSecondRoundIndex() >= 9;
+  }
+
   /**
    * Tests possible moves for the Character to make
    *
@@ -202,8 +223,10 @@ public class Board {
             if (this.c.hasCarrot() && this.board.get(y).get(x) instanceof Mountain) {
               if (this.debug)
                 System.out.println("Marvin is climbing the mountain...");
+              gBoard1.setWinner(c);
               System.out.println(c.getNameChar() + " has won!");
               c.setWinner();
+              this.board.get(c.getLocation()[1]).set(c.getLocation()[0], " ");
               break;
             }
 
@@ -215,7 +238,7 @@ public class Board {
               return al;
             }
 
-            else if (this.board.get(y).get(x) == " " || this.board.get(y).get(x) instanceof Carrot
+            else if (this.board.get(y).get(x) == " " || this.board.get(y).get(x) instanceof Carrot && !c.hasCarrot()
                 || this.board.get(y).get(x) instanceof Character
                     && !(Character.class.cast(this.board.get(y).get(x)).getNameChar().equals(this.c.getNameChar()))) {
 
@@ -249,7 +272,9 @@ public class Board {
               if (this.debug)
                 System.out.println(this.c.toString() + " is climbing the mountain...");
               System.out.println(c.getNameChar() + " has won!");
+              gBoard1.setWinner(c);
               c.setWinner();
+              this.board.get(c.getLocation()[1]).set(c.getLocation()[0], " ");
               c.interrupt();
             } else if (this.board.get(y).get(x) == " "
                 || this.board.get(y).get(x) instanceof Carrot && !c.hasCarrot()) {
@@ -277,23 +302,32 @@ public class Board {
    */
   private void setPosition(int[] newCoords, int[] location) {
 
+    boolean gotCarrot = false;
+    boolean kill = false;
+
     if (this.board.get(newCoords[1]).get(newCoords[0]) instanceof Carrot) {
       Carrot carrot = Carrot.class.cast(this.board.get(newCoords[1]).get(newCoords[0]));
-
+      gotCarrot = true;
       if (this.debug)
         System.out.println(this.c.getNameChar() + " found " + carrot.toString());
 
       this.c.setCarrot(carrot);
+      this.availableCarrots -= 1;
+      if (this.availableCarrots == 0 && this.characters[1].hasCarrot()) this.game.endRound();
       if (this.debug) System.out.println(c.toString() + " picked up Carrot " + carrot.getID());
     }
 
     else if (this.c.getNameChar() == "marvin" && this.board.get(newCoords[1]).get(newCoords[0]) instanceof Character) {
+      kill = true;
       Character deadChar = Character.class.cast(this.board.get(newCoords[1]).get(newCoords[0]));
-      if (deadChar.hasCarrot())
+      if (deadChar.hasCarrot()){
         this.c.setCarrot(deadChar.kill());
+        if (this.availableCarrots == 0 && this.characters[1].hasCarrot()) this.game.endRound();
         if (this.debug) System.out.println(c.toString() + " stole Carrot " + c.getCarrot().getID());
+      }
       else
         deadChar.kill();
+      c.killed(deadChar);
     }
 
     if (this.debug)
@@ -313,8 +347,14 @@ public class Board {
     this.board.get(newCoords[1]).set(newCoords[0], this.c);
     this.board.get(location[1]).set(location[0], " ");
 
-    this.gBoard1.updateTiles(newCoords, location);
+    try {
+      Thread.sleep(500);
+    }
+    catch (Exception e){
+      System.out.println("Thread Interrupted..." + e);
+    }
 
+    this.gBoard1.updateCharacterTiles(newCoords, location, this.c, gotCarrot, kill);
     this.c.setLocation(newCoords[0], newCoords[1]);
 
     if (this.debug) {
@@ -355,8 +395,15 @@ public class Board {
 
     Collections.shuffle(openPositions);
 
-    this.board.get(openPositions.get(0)[1]).set(openPositions.get(0)[0], this.mountain);
-    this.board.get(this.mountain.getLocation()[1]).set(this.mountain.getLocation()[0], " ");
+    int[] newCoords = {openPositions.get(0)[0],openPositions.get(0)[1]};
+    int[] oldCoords = {this.mountain.getLocation()[0],this.mountain.getLocation()[1]};
+
+    this.board.get(newCoords[1]).set(newCoords[0], this.mountain);
+    this.board.get(oldCoords[1]).set(oldCoords[0], " ");
+
+    this.gBoard1.updateMountainTile(newCoords,oldCoords);
+
+
 
     if (this.debug)
       System.out.println("Moving mountain from " + Arrays.toString(this.mountain.getLocation()) + " to "
@@ -402,7 +449,7 @@ public class Board {
             printBoard += Carrot.class.cast(this.board.get(i).get(j)).toString() + "|";
           }
         } else
-          printBoard += "  -  |";
+          printBoard += "     |";
       }
 
       if (i < this.board.get(i).size() - 1) {
@@ -421,10 +468,12 @@ public class Board {
     return printBoard;
   }
 
+  //TODO PRINT SECOND ROUND
+
   /**
    * Creates the board and openPosition Data Structures
    */
-  private void createBoard() {
+  private void createFirstRoundBoard() {
 
     int[] deck = new int[25];
     ArrayList<ArrayList> locations = new ArrayList<ArrayList>();
@@ -496,6 +545,18 @@ public class Board {
 
     this.board = locations;
     this.gBoard1.createFrame(this.board);
+  }
+
+  public void createSecondRoundBoard(Character c, Character t){
+    this.secondRoundPlayers[0] = new Character[10];
+    c.setSecondRoundInfo(0,0);
+    this.secondRoundPlayers[0][0] = c;
+
+    this.secondRoundPlayers[1] = new Character[10];
+    t.setSecondRoundInfo(1,0);
+    this.secondRoundPlayers[1][0] = t;
+
+    this.gBoard1.setRoundTwo(c, t);
   }
 
   /**
